@@ -359,13 +359,32 @@ export async function listR2Objects(settings: DrigSettings): Promise<R2Object[]>
   const host = `${runtimeSettings.accountId}.r2.cloudflarestorage.com`;
   const encodedBucket = encodeURIComponent(runtimeSettings.bucketName);
   const prefix = trimSlash(runtimeSettings.keyPrefix);
-  const url = `https://${host}/${encodedBucket}?list-type=2${prefix ? `&prefix=${encodeURIComponent(prefix + "/")}` : ""}`;
+
+  // Build query parameters
+  const queryParams: Record<string, string> = {
+    "list-type": "2"
+  };
+  if (prefix) {
+    queryParams.prefix = prefix + "/";
+  }
+
+  // Build URL with encoded query string
+  const urlQueryString = Object.entries(queryParams)
+    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+    .join("&");
+  const url = `https://${host}/${encodedBucket}?${urlQueryString}`;
 
   const amzDate = createAmzDate();
   const dateStamp = amzDate.slice(0, 8);
   const region = runtimeSettings.region || "auto";
-  const canonicalUri = `/${encodedBucket}/`;
-  const canonicalQueryString = `list-type=2${prefix ? `&prefix=${encodeURIComponent(prefix + "/")}` : ""}`;
+  const canonicalUri = `/${encodedBucket}`;
+
+  // Build canonical query string (sorted by key, with proper encoding)
+  const canonicalQueryString = Object.entries(queryParams)
+    .sort(([keyA], [keyB]) => keyA.localeCompare(keyB))
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join("&");
+
   const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
   const payloadHash = await sha256Hex("");
 
