@@ -10,6 +10,8 @@ import {
   uploadImageToR2
 } from "./r2";
 import { DEFAULT_SETTINGS, type DrigSettings } from "./types";
+import { UploadQueueManager } from "./upload/uploadQueueManager";
+import type { UploadTask } from "./upload/types";
 
 const IMAGE_MANAGER_VIEW_TYPE = "drig-image-manager";
 
@@ -100,31 +102,69 @@ export default class DrigPlugin extends Plugin {
 
     const clipboardData = evt.clipboardData;
     evt.preventDefault();
-    const inserted: string[] = [];
-    let hasFailure = false;
 
-    for (const file of files) {
-      try {
-        const imageUrl = await uploadImageToR2(file, this.settings);
+    // Use upload queue for concurrent uploads
+    const queueManager = new UploadQueueManager(this.settings);
+    queueManager.enqueue(files);
+
+    try {
+      const summary = await queueManager.start();
+
+      // Sort successful results by order and insert
+      const successTasks: UploadTask[] = [];
+      queueManager["state"].tasks.forEach((task) => {
+        if (task.status === "success" && task.result) {
+          successTasks.push(task);
+        }
+      });
+
+      successTasks.sort((a, b) => a.order - b.order);
+
+      const inserted: string[] = successTasks.map((task) => {
         const altText = this.settings.defaultAltText.trim() || "图片";
-        inserted.push(`![${altText}](${imageUrl})`);
-      } catch (error) {
-        hasFailure = true;
-        const message = error instanceof Error ? error.message : String(error);
-        new Notice(this.tr("notice.uploadFailed", { message }));
-      }
-    }
+        return `![${altText}](${task.result!.url})`;
+      });
 
-    if (inserted.length > 0) {
-      editor.replaceSelection(inserted.join("\n"));
-      new Notice(this.tr("notice.uploadSuccess", { count: inserted.length }));
-    } else if (hasFailure && clipboardData) {
-      const text = clipboardData.getData("text/plain");
-      const html = clipboardData.getData("text/html");
-      if (text || html) {
-        editor.replaceSelection(text || html);
-      } else {
-        new Notice(this.tr("notice.uploadFailedRetry"));
+      if (inserted.length > 0) {
+        editor.replaceSelection(inserted.join("\n"));
+      }
+
+      // Show summary notification
+      if (summary.failed === 0 && summary.success > 0) {
+        new Notice(this.tr("notice.uploadSuccess", { count: summary.success }));
+      } else if (summary.success > 0 && summary.failed > 0) {
+        new Notice(
+          `上传完成：成功 ${summary.success} 张，失败 ${summary.failed} 张`
+        );
+      } else if (summary.failed > 0) {
+        // All failed - show first error
+        const firstError = summary.errors[0];
+        if (firstError) {
+          new Notice(
+            this.tr("notice.uploadFailed", { message: firstError.message })
+          );
+        }
+
+        // Fallback to clipboard text if available
+        if (clipboardData) {
+          const text = clipboardData.getData("text/plain");
+          const html = clipboardData.getData("text/html");
+          if (text || html) {
+            editor.replaceSelection(text || html);
+          }
+        }
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      new Notice(this.tr("notice.uploadFailed", { message }));
+
+      // Fallback to clipboard text
+      if (clipboardData) {
+        const text = clipboardData.getData("text/plain");
+        const html = clipboardData.getData("text/html");
+        if (text || html) {
+          editor.replaceSelection(text || html);
+        }
       }
     }
   }
