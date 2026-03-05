@@ -1,0 +1,36 @@
+{
+  "name": "drig",
+  "version": "0.0.3",
+  "description": "Obsidian plugin: auto upload pasted images to Cloudflare R2 and insert markdown links.",
+  "main": "dist/main.js",
+  "packageManager": "pnpm@9.7.1",
+  "scripts": {
+    "dev": "vite build --watch --mode development",
+    "copy:meta": "node scripts/copy-meta.mjs",
+    "typecheck": "tsc --noEmit --skipLibCheck",
+    "build": "pnpm typecheck && vite build && pnpm copy:meta"
+  },
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "react",
+    "vite",
+    "cloudflare-r2"
+  ],
+  "author": "chiway",
+  "homepage": "https://ssvex.com",
+  "license": "MIT",
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.0",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "obsidian": "latest",
+    "typescript": "^5.8.2",
+    "vite": "^6.2.0"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "id": "drig",
+  "name": "drig",
+  "version": "0.0.3",
+  "minAppVersion": "1.5.0",
+  "description": "Paste images, auto upload to Cloudflare R2, then insert markdown image links.",
+  "author": "chiway",
+  "authorUrl": "https://ssvex.com",
+  "isDesktopOnly": false
+}
