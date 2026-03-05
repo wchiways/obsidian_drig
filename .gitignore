@@ -31,3 +31,6 @@ pnpm-debug.log*
 .cache/
 .spec-workflow/
 .claude/
+
+# Test coverage
+coverage/
