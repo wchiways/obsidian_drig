@@ -40,7 +40,18 @@ const MESSAGES = {
     "notice.uploadFailedRetry": "drig：所有图片上传失败，请重新粘贴。",
     "notice.uploadSuccess": "drig：成功上传 {count} 张图片到 R2。",
     "error.requestTimeout": "请求超时",
-    "error.signatureKeyTooShort": "签名密钥长度必须至少为 16 个字符"
+    "error.signatureKeyTooShort": "签名密钥长度必须至少为 16 个字符",
+    "imageManager.title": "R2 图片管理",
+    "imageManager.refresh": "刷新",
+    "imageManager.loading": "加载中...",
+    "imageManager.delete": "删除",
+    "imageManager.selectAll": "全选",
+    "imageManager.noSelection": "请先选择要删除的图片",
+    "imageManager.deleteConfirm": "确定要删除 {count} 张图片吗？此操作不可恢复。",
+    "imageManager.deleteSuccess": "成功删除 {count} 张图片",
+    "imageManager.deletePartial": "删除完成：成功 {success} 张，失败 {fail} 张",
+    "imageManager.loadFailed": "加载图片列表失败",
+    "imageManager.empty": "暂无图片"
   },
   "en-US": {
     "setting.title": "drig - Cloudflare R2 Image Uploader",
@@ -87,7 +98,18 @@ const MESSAGES = {
     "notice.uploadFailedRetry": "drig: All images failed to upload, please paste again.",
     "notice.uploadSuccess": "drig: uploaded {count} image(s) to R2.",
     "error.requestTimeout": "Request timeout",
-    "error.signatureKeyTooShort": "Signature key must be at least 16 characters long"
+    "error.signatureKeyTooShort": "Signature key must be at least 16 characters long",
+    "imageManager.title": "R2 Image Manager",
+    "imageManager.refresh": "Refresh",
+    "imageManager.loading": "Loading...",
+    "imageManager.delete": "Delete",
+    "imageManager.selectAll": "Select All",
+    "imageManager.noSelection": "Please select images to delete",
+    "imageManager.deleteConfirm": "Are you sure you want to delete {count} image(s)? This action cannot be undone.",
+    "imageManager.deleteSuccess": "Successfully deleted {count} image(s)",
+    "imageManager.deletePartial": "Deletion completed: {success} succeeded, {fail} failed",
+    "imageManager.loadFailed": "Failed to load image list",
+    "imageManager.empty": "No images found"
   }
 } as const;
 

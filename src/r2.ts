@@ -1,6 +1,13 @@
 import { requestUrl } from "obsidian";
 import type { DrigSettings } from "./types";
 
+export interface R2Object {
+  key: string;
+  size: number;
+  lastModified: Date;
+  url: string;
+}
+
 const MIME_EXTENSION_MAP: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -346,3 +353,196 @@ async function getSignatureKey(
   const kService = new Uint8Array(await hmacRaw(kRegion, service));
   return new Uint8Array(await hmacRaw(kService, "aws4_request"));
 }
+
+export async function listR2Objects(settings: DrigSettings): Promise<R2Object[]> {
+  const runtimeSettings = normalizeRuntimeSettings(settings);
+  const host = `${runtimeSettings.accountId}.r2.cloudflarestorage.com`;
+  const encodedBucket = encodeURIComponent(runtimeSettings.bucketName);
+  const prefix = trimSlash(runtimeSettings.keyPrefix);
+  const url = `https://${host}/${encodedBucket}?list-type=2${prefix ? `&prefix=${encodeURIComponent(prefix + "/")}` : ""}`;
+
+  const amzDate = createAmzDate();
+  const dateStamp = amzDate.slice(0, 8);
+  const region = runtimeSettings.region || "auto";
+  const canonicalUri = `/${encodedBucket}/`;
+  const canonicalQueryString = `list-type=2${prefix ? `&prefix=${encodeURIComponent(prefix + "/")}` : ""}`;
+  const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+  const payloadHash = await sha256Hex("");
+
+  const canonicalHeaders = [
+    `host:${host}`,
+    `x-amz-content-sha256:${payloadHash}`,
+    `x-amz-date:${amzDate}`
+  ].join("\n");
+
+  const canonicalRequest = [
+    "GET",
+    canonicalUri,
+    canonicalQueryString,
+    `${canonicalHeaders}\n`,
+    signedHeaders,
+    payloadHash
+  ].join("\n");
+
+  const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    credentialScope,
+    await sha256Hex(canonicalRequest)
+  ].join("\n");
+
+  const signingKey = await getSignatureKey(
+    runtimeSettings.secretAccessKey,
+    dateStamp,
+    region,
+    "s3"
+  );
+  const signature = await hmacHex(signingKey, stringToSign);
+  const authorization = [
+    `AWS4-HMAC-SHA256 Credential=${runtimeSettings.accessKeyId}/${credentialScope}`,
+    `SignedHeaders=${signedHeaders}`,
+    `Signature=${signature}`
+  ].join(", ");
+
+  let response;
+  try {
+    response = await Promise.race([
+      requestUrl({
+        url,
+        method: "GET",
+        headers: {
+          "x-amz-content-sha256": payloadHash,
+          "x-amz-date": amzDate,
+          Authorization: authorization
+        },
+        throw: false
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), REQUEST_TIMEOUT)
+      )
+    ]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Network request failed: ${message}`);
+  }
+
+  if (response.status < 200 || response.status >= 300) {
+    const detail = response.text?.trim();
+    const sanitizedDetail = sanitizeErrorMessage(detail || "");
+    throw new Error(
+      `HTTP ${response.status}${sanitizedDetail ? `: ${sanitizedDetail}` : ""}`
+    );
+  }
+
+  return parseListObjectsResponse(response.text, runtimeSettings);
+}
+
+export async function deleteR2Object(
+  objectKey: string,
+  settings: DrigSettings
+): Promise<void> {
+  const runtimeSettings = normalizeRuntimeSettings(settings);
+  const host = `${runtimeSettings.accountId}.r2.cloudflarestorage.com`;
+  const encodedBucket = encodeURIComponent(runtimeSettings.bucketName);
+  const encodedObjectKey = encodeObjectKey(objectKey);
+  const canonicalUri = `/${encodedBucket}/${encodedObjectKey}`;
+  const url = `https://${host}${canonicalUri}`;
+
+  const amzDate = createAmzDate();
+  const dateStamp = amzDate.slice(0, 8);
+  const region = runtimeSettings.region || "auto";
+  const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
+  const payloadHash = await sha256Hex("");
+
+  const canonicalHeaders = [
+    `host:${host}`,
+    `x-amz-content-sha256:${payloadHash}`,
+    `x-amz-date:${amzDate}`
+  ].join("\n");
+
+  const canonicalRequest = [
+    "DELETE",
+    canonicalUri,
+    "",
+    `${canonicalHeaders}\n`,
+    signedHeaders,
+    payloadHash
+  ].join("\n");
+
+  const credentialScope = `${dateStamp}/${region}/s3/aws4_request`;
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    amzDate,
+    credentialScope,
+    await sha256Hex(canonicalRequest)
+  ].join("\n");
+
+  const signingKey = await getSignatureKey(
+    runtimeSettings.secretAccessKey,
+    dateStamp,
+    region,
+    "s3"
+  );
+  const signature = await hmacHex(signingKey, stringToSign);
+  const authorization = [
+    `AWS4-HMAC-SHA256 Credential=${runtimeSettings.accessKeyId}/${credentialScope}`,
+    `SignedHeaders=${signedHeaders}`,
+    `Signature=${signature}`
+  ].join(", ");
+
+  let response;
+  try {
+    response = await Promise.race([
+      requestUrl({
+        url,
+        method: "DELETE",
+        headers: {
+          "x-amz-content-sha256": payloadHash,
+          "x-amz-date": amzDate,
+          Authorization: authorization
+        },
+        throw: false
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Request timeout")), REQUEST_TIMEOUT)
+      )
+    ]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Network request failed: ${message}`);
+  }
+
+  if (response.status < 200 || response.status >= 300) {
+    const detail = response.text?.trim();
+    const sanitizedDetail = sanitizeErrorMessage(detail || "");
+    throw new Error(
+      `HTTP ${response.status}${sanitizedDetail ? `: ${sanitizedDetail}` : ""}`
+    );
+  }
+}
+
+function parseListObjectsResponse(xml: string, settings: DrigSettings): R2Object[] {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, "text/xml");
+  const contents = doc.querySelectorAll("Contents");
+  const objects: R2Object[] = [];
+
+  contents.forEach((content) => {
+    const key = content.querySelector("Key")?.textContent;
+    const size = content.querySelector("Size")?.textContent;
+    const lastModified = content.querySelector("LastModified")?.textContent;
+
+    if (key && size && lastModified) {
+      objects.push({
+        key,
+        size: parseInt(size, 10),
+        lastModified: new Date(lastModified),
+        url: toPublicUrl(key, settings)
+      });
+    }
+  });
+
+  return objects;
+}
+

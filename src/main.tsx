@@ -1,7 +1,8 @@
 import { createRoot, type Root } from "react-dom/client";
-import { App, Editor, Notice, Plugin, PluginSettingTab } from "obsidian";
+import { App, Editor, ItemView, Notice, Plugin, PluginSettingTab, WorkspaceLeaf } from "obsidian";
 import { normalizeLocale, t as translate, type MessageKey } from "./i18n";
 import { SettingsPanel } from "./settings/SettingsPanel";
+import { ImageManager } from "./imageManager/ImageManager";
 import {
   getImageFilesFromClipboard,
   hasRequiredConfig,
@@ -9,6 +10,8 @@ import {
   uploadImageToR2
 } from "./r2";
 import { DEFAULT_SETTINGS, type DrigSettings } from "./types";
+
+const IMAGE_MANAGER_VIEW_TYPE = "drig-image-manager";
 
 export default class DrigPlugin extends Plugin {
   settings: DrigSettings = DEFAULT_SETTINGS;
@@ -20,11 +23,48 @@ export default class DrigPlugin extends Plugin {
     this.settingsTab = new DrigSettingTab(this.app, this);
     this.addSettingTab(this.settingsTab);
 
+    this.registerView(
+      IMAGE_MANAGER_VIEW_TYPE,
+      (leaf) => new ImageManagerView(leaf, this)
+    );
+
+    this.addRibbonIcon("image", "R2 图片管理", () => {
+      this.activateImageManagerView();
+    });
+
+    this.addCommand({
+      id: "open-image-manager",
+      name: "打开图片管理器",
+      callback: () => {
+        this.activateImageManagerView();
+      }
+    });
+
     this.registerEvent(
       this.app.workspace.on("editor-paste", (evt: ClipboardEvent, editor: Editor) => {
         void this.handlePaste(evt, editor);
       })
     );
+  }
+
+  async activateImageManagerView(): Promise<void> {
+    const { workspace } = this.app;
+
+    let leaf: WorkspaceLeaf | null = null;
+    const leaves = workspace.getLeavesOfType(IMAGE_MANAGER_VIEW_TYPE);
+
+    if (leaves.length > 0) {
+      leaf = leaves[0];
+    } else {
+      leaf = workspace.getRightLeaf(false);
+      if (leaf) {
+        await leaf.setViewState({ type: IMAGE_MANAGER_VIEW_TYPE, active: true });
+      }
+    }
+
+    if (leaf) {
+      workspace.revealLeaf(leaf);
+    }
   }
 
   onunload(): void {
@@ -160,4 +200,40 @@ function normalizePatch(patch: Partial<DrigSettings>): Partial<DrigSettings> {
   }
 
   return normalized;
+}
+
+class ImageManagerView extends ItemView {
+  private plugin: DrigPlugin;
+  private root: Root | null = null;
+
+  constructor(leaf: WorkspaceLeaf, plugin: DrigPlugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+
+  getViewType(): string {
+    return IMAGE_MANAGER_VIEW_TYPE;
+  }
+
+  getDisplayText(): string {
+    return "R2 图片管理";
+  }
+
+  getIcon(): string {
+    return "image";
+  }
+
+  async onOpen(): Promise<void> {
+    const container = this.containerEl.children[1];
+    container.empty();
+    const mount = container.createDiv();
+
+    this.root = createRoot(mount);
+    this.root.render(<ImageManager settings={this.plugin.settings} />);
+  }
+
+  async onClose(): Promise<void> {
+    this.root?.unmount();
+    this.root = null;
+  }
 }
