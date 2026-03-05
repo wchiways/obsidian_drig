@@ -10,8 +10,10 @@ interface SettingsPanelProps {
 
 interface TextField {
   key: Exclude<keyof DrigSettings, "language" | "enableSignature" | "uploadConcurrency" | "maxRetryAttempts" | "retryBaseDelayMs" | "retryMaxDelayMs" | "degradeFailureThreshold" | "degradeCooldownMs" | "maxFileSizeMb" | "defaultCopyFormat">;
-  labelKey: MessageKey;
-  descriptionKey: MessageKey;
+  labelKey?: MessageKey;
+  descriptionKey?: MessageKey;
+  label?: string;
+  description?: string;
   placeholder: string;
   type?: "text" | "password";
   group: "basic" | "advanced" | "copy";
@@ -327,8 +329,12 @@ export function SettingsPanel(props: SettingsPanelProps): JSX.Element {
                 margin: "12px 0"
               }}
             >
-              <span style={{ fontWeight: 600 }}>{tr(field.labelKey)}</span>
-              <span style={{ fontSize: "12px", opacity: 0.8 }}>{tr(field.descriptionKey)}</span>
+              <span style={{ fontWeight: 600 }}>
+                {field.labelKey ? tr(field.labelKey) : field.label}
+              </span>
+              <span style={{ fontSize: "12px", opacity: 0.8 }}>
+                {field.descriptionKey ? tr(field.descriptionKey) : field.description}
+              </span>
               <input
                 type={field.type ?? "text"}
                 value={draft[field.key]}
@@ -378,8 +384,12 @@ export function SettingsPanel(props: SettingsPanelProps): JSX.Element {
                 margin: "12px 0"
               }}
             >
-              <span style={{ fontWeight: 600 }}>{tr(field.labelKey)}</span>
-              <span style={{ fontSize: "12px", opacity: 0.8 }}>{tr(field.descriptionKey)}</span>
+              <span style={{ fontWeight: 600 }}>
+                {field.labelKey ? tr(field.labelKey) : field.label}
+              </span>
+              <span style={{ fontSize: "12px", opacity: 0.8 }}>
+                {field.descriptionKey ? tr(field.descriptionKey) : field.description}
+              </span>
               <input
                 type={field.type ?? "text"}
                 value={draft[field.key]}
@@ -406,8 +416,12 @@ export function SettingsPanel(props: SettingsPanelProps): JSX.Element {
                 margin: "12px 0"
               }}
             >
-              <span style={{ fontWeight: 600 }}>{field.label}</span>
-              <span style={{ fontSize: "12px", opacity: 0.8 }}>{field.description}</span>
+              <span style={{ fontWeight: 600 }}>
+                {field.label}
+              </span>
+              <span style={{ fontSize: "12px", opacity: 0.8 }}>
+                {field.description}
+              </span>
               <input
                 type="number"
                 value={draft[field.key]}
@@ -463,8 +477,12 @@ export function SettingsPanel(props: SettingsPanelProps): JSX.Element {
                 margin: "12px 0"
               }}
             >
-              <span style={{ fontWeight: 600 }}>{field.label}</span>
-              <span style={{ fontSize: "12px", opacity: 0.8 }}>{field.description}</span>
+              <span style={{ fontWeight: 600 }}>
+                {field.label || (field.labelKey ? tr(field.labelKey) : "")}
+              </span>
+              <span style={{ fontSize: "12px", opacity: 0.8 }}>
+                {field.description || (field.descriptionKey ? tr(field.descriptionKey) : "")}
+              </span>
               <input
                 type="text"
                 value={draft[field.key]}
