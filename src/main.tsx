@@ -35,6 +35,12 @@ export default class DrigPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
     this.settings.language = normalizeLocale(this.settings.language);
+    if (this.settings.signatureKey === undefined) {
+      this.settings.signatureKey = "";
+    }
+    if (this.settings.enableSignature === undefined) {
+      this.settings.enableSignature = false;
+    }
   }
 
   async saveSettings(): Promise<void> {
