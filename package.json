@@ -1,6 +1,6 @@
 {
   "name": "drig",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "description": "Obsidian plugin: auto upload pasted images to Cloudflare R2 and insert markdown links.",
   "main": "dist/main.js",
   "packageManager": "pnpm@9.7.1",
